@@ -124,12 +124,23 @@ function createWindow() {
               }).show()
         }
         else if (platform.includes('win')) {
-          // Windows specific code
-            pdfPrinter.print(pdfPath, {
+            // Windows specific code
+            let options =  {
               printer: printerLabel, // Replace with the name of your printer
               win32: ['-print-settings', 'fit'], // Optional print settings for Windows
               silent: true // Enable silent printing
-            }).then(() => {
+            };
+
+            // Add orientation option if necessary
+            if ( orientation ) { #TODO: Get orientation from plugin settings
+                if ( orientation == "Portrait" ) {
+                    options["orientation"] = "portrait";
+                } else if ( orientation == "Landscape" ) {
+                    options["orientation"] = "landscape";
+                }
+            };
+
+            pdfPrinter.print(pdfPath, options).then(() => {
               new Notification({
                 title: 'Olorin Alert',
                 body: 'Print Successfull'
