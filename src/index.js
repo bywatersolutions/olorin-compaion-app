@@ -84,6 +84,48 @@ function createWindow() {
   function printFunction(data,ws){
     const htmlCode = data.content
     const printerName = data.printer
+    const pageHeight = data.pageHeight
+    const pageWidth = data.pageWidth
+    const marginTop = data.marginTop
+    const marginRight = data.marginRight
+    const marginLeft = data.marginLeft
+    const marginBottom = data.marginBottom
+    const orientation = data.orientation
+    // check if any of them is zero , then pass A4 as default
+    if(pageHeight!=0 && pageWidth!=0){
+      var pageProperty = pageSize= { 'width': parseFloat(pageWidth), 'height': parseFloat(pageHeight) }
+    }
+    else{
+      var pageProperty = pageSize= 'A4'
+    }
+    // check if margin availabe 
+    if(marginTop && marginRight && marginLeft && marginBottom){
+      var marginproperty = { 
+            top: parseFloat(marginTop),
+            bottom: parseFloat(marginBottom),
+            left: parseFloat(marginLeft),
+            right: parseFloat(marginBottom)
+           }
+    }
+    else{
+      var marginproperty = {marginType : 0}
+    }
+    var options = {
+      pageSize: pageProperty,
+      margins: marginproperty,
+      printBackground: true,
+    };
+    // check if orientation is not Automatic
+    // if(orientation != 'Automatic'){
+    //   if(orientation == 'Portrait'){
+    //     var landscape = false
+    //   }else if(orientation == 'Landscape'){
+    //     var landscape = true
+    //   }
+    //   options.landscape = landscape
+    // }
+
+    console.log(options)
     backgroundWindow = new BrowserWindow({
       show: false,
       webPreferences: {
@@ -94,7 +136,7 @@ function createWindow() {
   
   
     backgroundWindow.webContents.on('did-finish-load', () => {
-      generatePDF(printerName,ws);
+      generatePDF(printerName,options,ws,orientation);
     });
   
     backgroundWindow.on('closed', () => {
@@ -102,11 +144,9 @@ function createWindow() {
     });
   }
 
-  function generatePDF(printerLabel,ws) {
+  function generatePDF(printerLabel,pageProperty,ws,orientation) {
   const pdfPath = path.join(__dirname, 'printer.pdf');
-  backgroundWindow.webContents.printToPDF({
-    pageSize: 'A4'
-  }).then(data => {
+  backgroundWindow.webContents.printToPDF(pageProperty).then(data => {
     fs.writeFile(pdfPath, data, (error) => {
         if (error) {
           console.error('Failed to save PDF:', error);
@@ -125,11 +165,20 @@ function createWindow() {
         }
         else if (platform.includes('win')) {
           // Windows specific code
-            pdfPrinter.print(pdfPath, {
-              printer: printerLabel, // Replace with the name of your printer
-              win32: ['-print-settings', 'fit'], // Optional print settings for Windows
-              silent: true // Enable silent printing
-            }).then(() => {
+          let printerOption =  {
+            printer: printerLabel, // Replace with the name of your printer
+            win32: ['-print-settings', 'fit'], // Optional print settings for Windows
+            silent: true // Enable silent printing
+          }
+          // Add orientation option if necessary
+          if ( orientation ) { 
+            if ( orientation == "Portrait" ) {
+                printerOption["orientation"] = "portrait";
+            } else if ( orientation == "Landscape" ) {
+                printerOption["orientation"] = "landscape";
+            }
+        };
+            pdfPrinter.print(pdfPath, printerOption).then(() => {
               new Notification({
                 title: 'Olorin Alert',
                 body: 'Print Successfull'
@@ -149,7 +198,13 @@ function createWindow() {
         } 
       });
   }
-  )
+  ).catch(err=>{
+    console.log(err)
+    new Notification({
+      title: 'Olorin Alert',
+      body: 'Please check all the page configuration'
+    }).show()
+  })
 }
 const template = [
   {
@@ -213,3 +268,9 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+// app.on('ready', () => {
+//   app.dock.setIcon(path.join(__dirname, 'icon.png')); // Path to your icon file
+//   app.setName('Olorin'); // Set the name of your app
+//   // Create and show your browser window or main UI here
+// });
