@@ -168,7 +168,8 @@ function createWindow() {
           let printerOption =  {
             printer: printerLabel, // Replace with the name of your printer
             win32: ['-print-settings', 'fit'], // Optional print settings for Windows
-            silent: true // Enable silent printing
+            silent: true, // Enable silent printing
+            scale: "noscale" // Without noscale it will try to scale to fit, bad for labels
           }
           // Add orientation option if necessary
           if ( orientation ) { 
