@@ -37,7 +37,8 @@ Would probably go to the “receipt printer’
 
 To do this, we will add some text at the bottom of each slip that needs to be connected to this printer plugin. 
 
-For example: 
+For example: <button id= “webPrint” data-printer=“receipt_printer” data-print= ‘#receipt”>Print</button>
+
 
 <button id= “webPrint” data-printer=“receipt_printer” data-print= ‘#receipt”>Print</button>
 
