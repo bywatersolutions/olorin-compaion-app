@@ -68,6 +68,12 @@ function createWindow() {
                     case 'printer-command':
                         printFunction(data, ws)
                         break;
+                    case 'get-options':
+                        getOptions(ws)
+                        break;
+                    case 'set-options':
+                        setOptions(data, ws)
+                        break;
 
                     default:
                         break;
@@ -82,6 +88,18 @@ function createWindow() {
         });
     });
 
+    function getOptions(ws) {
+        let data = fs.readFileSync('options.json');
+        console.log("GETTING OPTIONS DATA", data );
+        ws.send(data);
+    }
+
+    function setOptions(data, ws) {
+        console.log("SETTING OPTIONS DATA", data );
+        fs.writeFileSync('punishmenthistory.json', data);
+        ws.send(JSON.stringify({ "success": true }));
+    }
+    
     function listPrinter(ws) {
         const printers = printer.getPrinters();
         const data = {
