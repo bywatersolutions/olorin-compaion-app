@@ -1,11 +1,16 @@
-const { app, BrowserWindow, Tray, Menu } = require("electron");
+const { app, BrowserWindow, Tray, Menu, Notification } = require("electron");
 const path = require("path");
 const WebSocket = require("ws");
 const localShortcut = require("electron-localshortcut");
 const printer = require("printer");
 const pdfPrinter = require("pdf-to-printer");
 const fs = require("fs");
-const { Notification } = require("electron");
+const { env } = require("node:process");
+
+// Setting the envronment variable OLORIN_CONF_FILE to a fully qualified
+// file path ( e.g. "C:\opt\olorin_options.json" ) will cause the companion
+// application to utilize *only* that path and file.
+const olorin_config_file = process.env.OLORIN_CONFIG_FILE;
 
 const olorin_options_filename = "olorin_options.json";
 
@@ -102,14 +107,16 @@ function createWindow() {
   function findOptionsFile() {
     let file_to_use = "";
 
-    let paths = [
-      olorin_options_filename,
-      app.getPath("home") + "\\" + olorin_options_filename,
-      app.getPath("appData") + "\\" + olorin_options_filename,
-      app.getPath("userData") + "\\" + olorin_options_filename,
-      app.getPath("sessionData") + "\\" + olorin_options_filename,
-      "C:\\" + olorin_options_filename,
-    ];
+    let paths = olorin_config_file
+      ? [olorin_config_file]
+      : [
+          olorin_options_filename,
+          app.getPath("home") + "\\" + olorin_options_filename,
+          app.getPath("appData") + "\\" + olorin_options_filename,
+          app.getPath("userData") + "\\" + olorin_options_filename,
+          app.getPath("sessionData") + "\\" + olorin_options_filename,
+          "C:\\" + olorin_options_filename,
+        ];
 
     for (const i in paths) {
       const p = paths[i];
