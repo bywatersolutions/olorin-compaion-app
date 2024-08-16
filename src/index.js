@@ -127,10 +127,15 @@ function createWindow() {
       }
     }
 
+    console.log("FOUND EXISTING OPTIONS FILE: ", file_to_use, "\r\n");
+
     if (!file_to_use) {
       // Default to Olorin Companion directory
       file_to_use = olorin_options_filename;
     }
+
+    console.log("USING OPTIONS FILE: ", file_to_use, "\r\n");
+    
     return file_to_use;
   }
 
@@ -152,6 +157,7 @@ function createWindow() {
     //console.log("DATA AS STRING", str)
     let file_to_use = findOptionsFile();
     fs.writeFileSync(file_to_use, JSON.stringify(data));
+    console.log("WRITING OPTIONS FILE TO: ", file_to_use);
     ws.send(JSON.stringify({ success: true }));
   }
 
@@ -165,23 +171,42 @@ function createWindow() {
   }
 
   function printFunction(data, ws) {
+    console.log("printFunction()", data);
     const htmlCode = data.content;
-    const printerName = data.printer;
-    const pageHeight = data.pageHeight;
-    const pageWidth = data.pageWidth;
-    const marginTop = data.marginTop;
-    const marginRight = data.marginRight;
-    const marginLeft = data.marginLeft;
-    const marginBottom = data.marginBottom;
-    const orientation = data.orientation;
+    const printer = data.printer;
+
+    let file_to_use = findOptionsFile();
+    let conf = fs.readFileSync(file_to_use);
+    conf = JSON.parse(conf);
+
+    // If the extension doesn't send us the data, read it from the config by printer name
+    const pageHeight   = conf[printer + "_height"]        ||  data.pageHeight;
+    const pageWidth    = conf[printer + "_width"]         ||  data.pageWidth;
+    const marginTop    = conf[printer + "_margin_top"]    ||  data.marginTop;
+    const marginRight  = conf[printer + "_margin_right"]  ||  data.marginRight;
+    const marginLeft   = conf[printer + "_margin_left"]   ||  data.marginLeft;
+    const marginBottom = conf[printer + "_margin_bottom"] ||  data.marginBottom;
+    const orientation  = conf[printer + "_orientation"]   ||  data.orientation;
+
+    const printerName = conf[printer];
+
+    console.log("NAME: ",        printerName );
+    console.log("HEIGHT: ",      pageHeight);
+    console.log("WIDTH: ",       pageWidth);
+    console.log("MTOP: ",        marginTop);
+    console.log("MRIGHT: ",      marginRight);
+    console.log("MLEFT: ",       marginLeft);
+    console.log("MBOTTOM: ",     marginBottom);
+    console.log("ORIENTATION: ", orientation);
+
     // check if any of them is zero , then pass A4 as default
     if (pageHeight != 0 && pageWidth != 0) {
-      var pageProperty = (pageSize = {
+      var printToPdfOptions = (pageSize = {
         width: parseFloat(pageWidth),
         height: parseFloat(pageHeight),
       });
     } else {
-      var pageProperty = (pageSize = "A4");
+      var printToPdfOptions = (pageSize = "A4");
     }
     // check if margin availabe
     if (marginTop && marginRight && marginLeft && marginBottom) {
@@ -197,7 +222,7 @@ function createWindow() {
       };
     }
     var options = {
-      pageSize: pageProperty,
+      pageSize: printToPdfOptions,
       margins: marginproperty,
       printBackground: true,
     };
@@ -211,13 +236,22 @@ function createWindow() {
     //   options.landscape = landscape
     // }
 
-    console.log(options);
+    console.log("PRINTER OPTIONS: ", options);
+    console.log("HTML: ", htmlCode);
+
     backgroundWindow = new BrowserWindow({
       show: false,
       webPreferences: {
         offscreen: true,
       },
     });
+
+    // This code saves the HTML to a temp file first, not actually necessary
+    // backgroundWindow.loadFile( html_file )
+    // let html_file = app.getPath("temp") + path.sep + "printer.html";
+    // console.log("HTML FILE: ", html_file );
+    // fs.writeFileSync( html_file, htmlCode );
+
     backgroundWindow.loadURL(
       `data:text/html;charset=UTF-8,${encodeURIComponent(htmlCode)}`
     );
@@ -231,18 +265,26 @@ function createWindow() {
     });
   }
 
-  function generatePDF(printerLabel, pageProperty, ws, orientation) {
+  function generatePDF(printerLabel, printToPdfOptions, ws, orientation) {
+    console.log("PRINTER: ", printerLabel);
+    console.log("PAGE PROP", printToPdfOptions);
+    console.log("ORIENTATION: ", orientation);
+
     const pdfPath = path.join(__dirname, "printer.pdf");
+    console.log("PDF PATH: ", pdfPath);
+
     backgroundWindow.webContents
-      .printToPDF(pageProperty)
+      .printToPDF(printToPdfOptions)
       .then((data) => {
         fs.writeFile(pdfPath, data, (error) => {
           if (error) {
-            console.error("Failed to save PDF:", error);
+            console.error("Failed to save PDF to path:", error);
             return;
           }
+
           const platform = process.platform;
-          console.log(platform);
+          console.log("PLATFORM: ", platform);
+
           if (platform.includes("darwin")) {
             // Mac specific code
             printer.printFile({
@@ -255,6 +297,8 @@ function createWindow() {
               body: "Print Successfull",
             }).show();
           } else if (platform.includes("win")) {
+
+		  console.log("PRINTER LABEL", printerLabel);
             // Windows specific code
             let printerOption = {
               printer: printerLabel, // Replace with the name of your printer
@@ -262,6 +306,7 @@ function createWindow() {
               silent: true, // Enable silent printing
               scale: "noscale", // Without noscale it will try to scale to fit, bad for labels
             };
+
             // Add orientation option if necessary
             if (orientation) {
               if (orientation == "Portrait") {
@@ -270,6 +315,7 @@ function createWindow() {
                 printerOption["orientation"] = "landscape";
               }
             }
+
             pdfPrinter
               .print(pdfPath, printerOption)
               .then(() => {
